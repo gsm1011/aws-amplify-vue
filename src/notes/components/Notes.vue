@@ -30,17 +30,23 @@
         v-on:remove="remove"
       />
     </ul>
+    <div>
+      <pre>
+        {{ updated }}
+      </pre>
+    </div>
   </div>
 </template>
 
 <script>
 import Vue from 'vue'
-import { Logger } from 'aws-amplify'
+import { Logger, API, graphqlOperation } from 'aws-amplify'
 import { JS } from 'fsts'
 
 import AmplifyStore from '../../store/store'
 
 import  { CreateTodo, ListTodos, UpdateTodo, DeleteTodo }  from './persist/graphqlActions';
+import * as subscriptions from '@/graphql/subscriptions'
 
 import NotesTheme from '../NotesTheme'
 import Note from './Note'
@@ -51,6 +57,7 @@ export default {
   name: 'Notes',
   data () {
     return {
+      updated: null,
       theme: NotesTheme || {},
       note: '',
       todos: [],
@@ -67,6 +74,20 @@ export default {
   created() {
     this.logger = new this.$Amplify.Logger('NOTES_component')
     this.list();
+    API.graphql(
+      graphqlOperation(subscriptions.onCreateTodo)
+    ).subscribe({
+      next: (todoData) => {
+        console.log(todoData.value.data.onCreateTodo)
+      }
+    });
+    API.graphql(graphqlOperation(subscriptions.onUpdateTodo))
+      .subscribe({
+        next: (todo) => {
+          console.log(todo.value.data)
+          this.updated = todo.value.data.onUpdateTodo
+        }
+      })
   },
   computed: {
     userId: function() { return AmplifyStore.state.userId }
